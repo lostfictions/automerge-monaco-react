@@ -18,15 +18,15 @@ declare module "automerge" {
   ): Readonly<T>;
   export function emptyChange<T extends object>(
     doc: Readonly<T>,
-    description: string
+    description?: string
   ): Readonly<T>;
   export function undo<T extends object>(
     doc: Readonly<T>,
-    description: string
+    description?: string
   ): Readonly<T>;
   export function redo<T extends object>(
     doc: Readonly<T>,
-    description: string
+    description?: string
   ): Readonly<T>;
   export function load<T extends object>(
     jsonString: string,
@@ -75,8 +75,8 @@ declare module "automerge" {
     private docChanged(docId: string, doc: Readonly<any>): void;
   }
 
-  export function canUndo(...args: any): any;
-  export function canRedo(...args: any): any;
+  export function canUndo<T extends object>(doc: T): boolean;
+  export function canRedo<T extends object>(doc: T): boolean;
   export function getObjectId(...args: any): any;
   export function getObjectById(...args: any): any;
   export function getActorId(...args: any): any;

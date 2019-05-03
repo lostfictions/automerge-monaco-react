@@ -1,9 +1,11 @@
 import React from "react";
 
 import MonacoEditor from "react-monaco-editor";
-import Automerge from "automerge";
+import { change, undo, redo, canUndo, canRedo } from "automerge";
 
-import { editor as ed } from "monaco-editor/esm/vs/editor/editor.api";
+import Monaco, {
+  editor as Editor
+} from "monaco-editor/esm/vs/editor/editor.api";
 import { Doc } from "./Doc";
 
 export interface MonAutoProps {
@@ -12,12 +14,7 @@ export interface MonAutoProps {
 }
 
 export default class MonacoAutomerge extends React.Component<MonAutoProps> {
-  // editorDidMount(editor: ed.IStandaloneCodeEditor, _monaco: any) {
-  //   // console.log("editorDidMount", editor);
-  //   // editor.focus();
-  // }
-
-  onChange = (_newValue: string, e: ed.IModelContentChangedEvent) => {
+  onChange = (_newValue: string, e: Editor.IModelContentChangedEvent) => {
     const changeDescription =
       "Text Change: " +
       (() => {
@@ -38,37 +35,43 @@ export default class MonacoAutomerge extends React.Component<MonAutoProps> {
       })();
 
     this.props.onChange(() =>
-      Automerge.change(this.props.value!, changeDescription, d => {
-        e.changes.forEach(change => {
-          d.text.splice(change.rangeOffset, change.rangeLength, ...change.text);
+      change(this.props.value!, changeDescription, d => {
+        e.changes.forEach(c => {
+          d.text.splice(c.rangeOffset, c.rangeLength, ...c.text);
         });
       })
     );
   };
 
-  // editorWillMount(_monaco: any) {
-  //   console.log("Mounting!");
-  //   // monaco.languages.json.jsonDefaults.setDiagnosticsOptions({
-  //   //   validate: true,
-  //   //   schemas: [
-  //   //     {
-  //   //       uri: "http://myserver/foo-schema.json",
-  //   //       fileMatch: ["*"],
-  //   //       schema: {
-  //   //         type: "object",
-  //   //         properties: {
-  //   //           p1: {
-  //   //             enum: ["v1", "v2"]
-  //   //           },
-  //   //           p2: {
-  //   //             $ref: "http://myserver/bar-schema.json"
-  //   //           }
-  //   //         }
-  //   //       }
-  //   //     }
-  //   //   ]
-  //   // });
-  // }
+  undo = () => {
+    const { onChange, value } = this.props;
+
+    if (value && onChange && canUndo(value)) {
+      this.props.onChange(() => undo(value));
+    }
+  };
+
+  redo = () => {
+    const { onChange, value } = this.props;
+
+    if (value && onChange && canRedo(value)) {
+      this.props.onChange(() => redo(value));
+    }
+  };
+
+  editorDidMount = (
+    editor: Editor.IStandaloneCodeEditor,
+    monaco: typeof Monaco
+  ) => {
+    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KEY_Z, this.undo);
+
+    editor.addCommand(
+      monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KEY_Z,
+      this.redo
+    );
+    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KEY_Y, this.redo);
+  };
+
   render() {
     if (!this.props.value) {
       return <div>Loading...</div>;
@@ -89,7 +92,7 @@ export default class MonacoAutomerge extends React.Component<MonAutoProps> {
         value={model}
         options={options}
         onChange={this.onChange}
-        // editorDidMount={this.editorDidMount}
+        editorDidMount={this.editorDidMount}
         // editorWillMount={this.editorWillMount}
       />
     );
