@@ -42,8 +42,9 @@
       "warn",
       {
         "vars": "all",
-        "args": "none",
-        "ignoreRestSiblings": true
+        "args": "all",
+        "ignoreRestSiblings": true,
+        "argsIgnorePattern": "^_"
       }
     ]
   }
