@@ -1,24 +1,45 @@
 import React from "react";
 
 import MonacoEditor from "react-monaco-editor";
+import Automerge from "automerge";
 
 import { editor as ed } from "monaco-editor/esm/vs/editor/editor.api";
 
-export default class App extends React.Component<{}, { code: string }> {
+const initialText: string =
+  "// type your code...\nfunction frig() { console.log('hi') }";
+
+interface Doc {
+  text: Automerge.Text;
+}
+
+export default class App extends React.Component<{}, { doc: Doc }> {
   constructor(props: any) {
     super(props);
+
+    const emptyDoc = Automerge.init<Doc>();
+
     this.state = {
-      code: "// type your code..."
+      doc: Automerge.change(emptyDoc, "Initialize doc", doc => {
+        doc.text = new Automerge.Text();
+
+        doc.text.insertAt(0, ...initialText);
+      })
     };
   }
+
   editorDidMount(editor: ed.IStandaloneCodeEditor, _monaco: any) {
     console.log("editorDidMount", editor);
     editor.focus();
   }
 
-  onChange = (newValue: string, _e: ed.IModelContentChangedEvent) => {
-    this.setState({ code: newValue });
-    // console.log("onChange", newVdalue, e);
+  onChange = (_newValue: string, e: ed.IModelContentChangedEvent) => {
+    this.setState(prev => ({
+      doc: Automerge.change(prev.doc, "Monaco change", d => {
+        e.changes.forEach(change => {
+          d.text.splice(change.rangeOffset, change.rangeLength, ...change.text);
+        });
+      })
+    }));
   };
 
   editorWillMount(_monaco: any) {
@@ -45,23 +66,29 @@ export default class App extends React.Component<{}, { code: string }> {
     // });
   }
   render() {
-    const code = this.state.code;
+    const { text } = this.state.doc;
+
+    const model = text.join("");
+
     const options = {
       selectOnLineNumbers: true
     };
 
     return (
-      <MonacoEditor
-        width="800"
-        height="600"
-        language="javascript"
-        theme="vs-dark"
-        value={code}
-        options={options}
-        onChange={this.onChange}
-        editorDidMount={this.editorDidMount}
-        editorWillMount={this.editorWillMount}
-      />
+      <div style={{ display: "flex", width: "100vw", height: "100vh" }}>
+        <MonacoEditor
+          language="typescript"
+          theme="vs-dark"
+          value={model}
+          options={options}
+          onChange={this.onChange}
+          editorDidMount={this.editorDidMount}
+          editorWillMount={this.editorWillMount}
+        />
+        <div style={{ padding: 10, backgroundColor: "#211", color: "#ddd" }}>
+          i am a helpful sidebar!
+        </div>
+      </div>
     );
   }
 }
