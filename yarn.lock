@@ -7841,9 +7841,10 @@ react-is@^16.8.1, react-is@^16.8.4:
   resolved "https://registry.yarnpkg.com/react-is/-/react-is-16.8.6.tgz#5bbc1e2d29141c9fbdfed456343fe2bc430a6a16"
   integrity sha512-aUk3bHfZ2bRSVFFbbeVS4i+lNPZr3/WM5jT2J5omUVV1zzcs1nAaf3l51ctA5FFvCRbhrH0bdAsRRQddFJZPtA==
 
-react-monaco-editor@ChrisFan/react-monaco-editor#dc279ad3:
+react-monaco-editor@^0.25.1:
   version "0.25.1"
-  resolved "https://codeload.github.com/ChrisFan/react-monaco-editor/tar.gz/dc279ad3f28b2ce133fd70f85d5215aab29e3462"
+  resolved "https://registry.yarnpkg.com/react-monaco-editor/-/react-monaco-editor-0.25.1.tgz#29215061da23d0e4ad7bf928d9403288d5be4e92"
+  integrity sha512-VLksQjt8fmeIZoET9fQgmR0sdCCBFaiss92MwW5JvgO3JfrnhHtrLBqrSQRjtbUmef1EmEKi4gZp5Mh0oidvVg==
   dependencies:
     "@types/react" "*"
     monaco-editor "^0.16.0"
