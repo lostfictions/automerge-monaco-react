@@ -1,110 +1,94 @@
 import React from "react";
-
-import MonacoEditor from "react-monaco-editor";
 import Automerge from "automerge";
 
-import { editor as ed } from "monaco-editor/esm/vs/editor/editor.api";
+import MonacoAutomerge, { Doc } from "./monaco-automerge";
 
 const initialText: string =
   "// type your code...\nfunction frig() { console.log('hi') }";
 
-interface Doc {
-  text: Automerge.Text;
+interface AppState {
+  doc1: Doc;
+  doc2: Doc;
+  changes1: string[];
+  changes2: string[];
 }
 
-export default class App extends React.Component<{}, { doc: Doc }> {
-  constructor(props: any) {
+function getChangelog(doc: Doc): string[] {
+  return Automerge.getHistory(doc).map((state: any) => state.change.message);
+}
+
+export default class App extends React.Component<{}, AppState> {
+  constructor(props: {}) {
     super(props);
 
     const emptyDoc = Automerge.init<Doc>();
 
-    this.state = {
-      doc: Automerge.change(emptyDoc, "Initialize doc", doc => {
-        doc.text = new Automerge.Text();
+    const doc1 = Automerge.change(emptyDoc, "Initialize doc", doc => {
+      doc.text = new Automerge.Text();
 
-        doc.text.insertAt(0, ...initialText);
-      })
+      doc.text.insertAt(0, ...initialText);
+    });
+
+    const doc2 = Automerge.merge(Automerge.init(), doc1);
+
+    this.state = {
+      doc1,
+      doc2,
+      changes1: getChangelog(doc1),
+      changes2: getChangelog(doc2)
     };
   }
+  onChange1: (changeHandler: (prev: Doc) => Doc) => void = changeHandler => {
+    const nextDoc = changeHandler(this.state.doc1);
 
-  editorDidMount(editor: ed.IStandaloneCodeEditor, _monaco: any) {
-    console.log("editorDidMount", editor);
-    editor.focus();
-  }
+    this.setState({
+      doc1: nextDoc,
+      changes1: getChangelog(nextDoc)
+    });
+  };
+  onChange2: (changeHandler: (prev: Doc) => Doc) => void = changeHandler => {
+    const nextDoc = changeHandler(this.state.doc2);
 
-  onChange = (_newValue: string, e: ed.IModelContentChangedEvent) => {
-    const changeDescription =
-      "Text Change: " +
-      (() => {
-        switch (true) {
-          case e.isRedoing:
-            return "Redo";
-          case e.isUndoing:
-            return "Undo";
-          case e.changes.every(c => c.text.length > 0 && c.rangeLength === 0):
-            return "Insert";
-          case e.changes.every(c => c.text.length === 0 && c.rangeLength > 0):
-            return "Delete";
-          case e.changes.every(c => c.text.length > 0 && c.rangeLength > 0):
-            return "Replace";
-          default:
-            return "Other Edit";
-        }
-      })();
-    this.setState(prev => ({
-      doc: Automerge.change(prev.doc, changeDescription, d => {
-        e.changes.forEach(change => {
-          d.text.splice(change.rangeOffset, change.rangeLength, ...change.text);
-        });
-      })
-    }));
+    this.setState({
+      doc2: nextDoc,
+      changes1: getChangelog(nextDoc)
+    });
   };
 
-  editorWillMount(_monaco: any) {
-    console.log("Mounting!");
-    // monaco.languages.json.jsonDefaults.setDiagnosticsOptions({
-    //   validate: true,
-    //   schemas: [
-    //     {
-    //       uri: "http://myserver/foo-schema.json",
-    //       fileMatch: ["*"],
-    //       schema: {
-    //         type: "object",
-    //         properties: {
-    //           p1: {
-    //             enum: ["v1", "v2"]
-    //           },
-    //           p2: {
-    //             $ref: "http://myserver/bar-schema.json"
-    //           }
-    //         }
-    //       }
-    //     }
-    //   ]
-    // });
-  }
+  merge = () => {
+    this.setState(({ doc1, doc2 }) => {
+      return {
+        doc1: Automerge.merge(doc1, doc2),
+        doc2: Automerge.merge(doc2, doc1)
+      };
+    });
+  };
+
   render() {
-    const { text } = this.state.doc;
-
-    const model = text.join("");
-
-    const options = {
-      selectOnLineNumbers: true
-    };
+    const { doc1, doc2, changes1, changes2 } = this.state;
 
     return (
-      <div style={{ display: "flex", width: "100vw", height: "100vh" }}>
-        <MonacoEditor
-          language="typescript"
-          theme="vs-dark"
-          value={model}
-          options={options}
-          onChange={this.onChange}
-          editorDidMount={this.editorDidMount}
-          editorWillMount={this.editorWillMount}
-        />
-        <div style={{ padding: 10, backgroundColor: "#211", color: "#ddd" }}>
-          i am a helpful sidebar!
+      <div
+        style={{
+          display: "flex",
+          width: "100vw",
+          height: "100vh",
+          overflow: "hidden"
+        }}
+      >
+        <MonacoAutomerge value={doc1} onChange={this.onChange1} />
+        <MonacoAutomerge value={doc2} onChange={this.onChange2} />
+        <div
+          style={{
+            padding: 10,
+            backgroundColor: "#211",
+            color: "#ddd"
+            // overflow: "hidden scroll"
+          }}
+        >
+          <button onClick={this.merge}>merge</button>
+          {/* <div>{changes1.join("\n")}</div>
+          <div>{changes2.join("\n")}</div> */}
         </div>
       </div>
     );
