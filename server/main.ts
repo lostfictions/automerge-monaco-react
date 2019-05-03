@@ -2,6 +2,7 @@ import { Server } from "http";
 import { readFileSync } from "fs";
 import path from "path";
 
+import express from "express";
 import {
   DocSet,
   change,
@@ -29,7 +30,14 @@ const doc = change(initAutomerge<Doc>(), "Initialize doc", d => {
 
 docSet.setDoc("main", doc);
 
-const server = new Server();
+const app = express();
+
+if (process.env.NODE_ENV !== "development") {
+  console.log("serving build directory!");
+  app.use(express.static(path.join(__dirname, "..", "..", "build")));
+}
+
+const server = new Server(app);
 const io = socket(server);
 
 interface ClientState {

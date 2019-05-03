@@ -5,7 +5,8 @@
     "strict": true,
     "moduleResolution": "node",
     "esModuleInterop": true,
-    "sourceMap": true
+    "sourceMap": true,
+    "outDir": "../build-server"
   },
-  "include": ["server.ts", "../src/defs.d.ts"]
+  "include": ["main.ts", "../src/defs.d.ts"]
 }
