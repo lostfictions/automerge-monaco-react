@@ -14,7 +14,10 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
-    "jsx": "preserve"
+    "jsx": "preserve",
+    "allowJs": false,
+    "skipLibCheck": false,
+    "allowSyntheticDefaultImports": true
   },
   "include": [
     "src"

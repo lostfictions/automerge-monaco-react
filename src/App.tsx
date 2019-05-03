@@ -34,39 +34,49 @@ socket.on("disconnect", (reason: string) => {
 //   d.text.insertAt(0, ...initialText);
 // });
 
-interface AppState {
-  docSet: Automerge.DocSet<Doc>;
-}
-
 // function getChangelog(doc: Doc): string[] {
 //   return Automerge.getHistory(doc).map(state => state.change.message);
 // }
 
+interface AppState {
+  doc: Doc;
+}
+
 export default class App extends React.Component<{}, AppState> {
-  connection: Automerge.Connection<Doc>;
+  readonly docSet = new Automerge.DocSet<Doc>();
+  readonly connection: Automerge.Connection<Doc>;
 
   constructor(props: {}) {
     super(props);
 
-    const docSet = new Automerge.DocSet<Doc>();
-    docSet.setDoc("main", Automerge.init<Doc>());
+    const doc = Automerge.change(Automerge.init<Doc>(), "Initialize doc", d => {
+      d.text = new Automerge.Text();
 
-    const connection = new Automerge.Connection(docSet, msg => {
+      d.text.insertAt(0, ..."hello friend");
+    });
+
+    this.docSet.setDoc("main", doc);
+
+    this.connection = new Automerge.Connection(this.docSet, msg => {
       console.log("sending!");
       socket.emit("automerge", msg);
     });
 
     socket.on("automerge", (msg: unknown) => {
       console.log("receiving!");
-      connection.receiveMsg(msg);
-      this.forceUpdate();
+      this.connection.receiveMsg(msg);
+    });
+
+    this.docSet.registerHandler((docId, nextDoc) => {
+      console.log(`doc changed: ${docId}`);
+      this.setState({
+        doc: nextDoc
+      });
     });
 
     this.state = {
-      docSet
+      doc
     };
-
-    this.connection = connection;
   }
 
   componentDidMount() {
@@ -80,13 +90,12 @@ export default class App extends React.Component<{}, AppState> {
   onChange: (changeHandler: () => Doc) => void = changeHandler => {
     const nextDoc = changeHandler();
 
-    this.state.docSet.setDoc("main", nextDoc);
+    this.docSet.setDoc("main", nextDoc);
     this.forceUpdate();
   };
 
   render() {
-    const { docSet } = this.state;
-    const doc = docSet.getDoc("main");
+    const { doc } = this.state;
 
     return (
       <div
