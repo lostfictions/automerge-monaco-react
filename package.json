@@ -8,6 +8,7 @@
     "start": "react-app-rewired start",
     "build": "react-app-rewired build",
     "server": "ts-node-dev --project server/tsconfig.json server/server.ts",
+    "dev": "run-p -l server start",
     "test": "echo '[CLIENT]' && run-s -l test:*",
     "test:eslint": "eslint ./src --ext .ts,.tsx",
     "test:prettier": "prettier 'src/**/*.{css,ts,tsx}' -l",

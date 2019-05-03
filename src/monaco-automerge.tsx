@@ -43,19 +43,27 @@ export default class MonacoAutomerge extends React.Component<MonAutoProps> {
     );
   };
 
-  undo = () => {
+  undo = (editor: Editor.IStandaloneCodeEditor) => {
     const { onChange, value } = this.props;
 
     if (value && onChange && canUndo(value)) {
+      // changing the doc externally clobbers the cursor position, so we save it
+      // and reapply it. this still doesn't very work well since we can't map the
+      // position through the change.
+      const position = editor.getPosition();
       this.props.onChange(() => undo(value));
+      if (position) editor.setPosition(position);
     }
   };
 
-  redo = () => {
+  redo = (editor: Editor.IStandaloneCodeEditor) => {
     const { onChange, value } = this.props;
 
     if (value && onChange && canRedo(value)) {
+      // see note in "undo"
+      const position = editor.getPosition();
       this.props.onChange(() => redo(value));
+      if (position) editor.setPosition(position);
     }
   };
 
@@ -63,13 +71,18 @@ export default class MonacoAutomerge extends React.Component<MonAutoProps> {
     editor: Editor.IStandaloneCodeEditor,
     monaco: typeof Monaco
   ) => {
-    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KEY_Z, this.undo);
+    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KEY_Z, () =>
+      this.undo(editor)
+    );
 
+    // redo has two keybindings!
     editor.addCommand(
       monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KEY_Z,
-      this.redo
+      () => this.redo(editor)
     );
-    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KEY_Y, this.redo);
+    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KEY_Y, () =>
+      this.redo(editor)
+    );
   };
 
   render() {
