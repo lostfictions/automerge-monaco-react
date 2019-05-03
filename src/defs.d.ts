@@ -67,15 +67,10 @@ declare module "automerge" {
   export class WatchableDoc {}
   export class Connection<T extends object> {
     constructor(docSet: DocSet<T>, sendMsg: (msg: unknown) => void);
-
     open(): void;
-
     close(): void;
-
     receiveMsg(msg: unknown): Readonly<T>;
-
-    maybeSendChanges(docId: string): void;
-
+    private maybeSendChanges(docId: string): void;
     private sendMsg(docId: string, clock: unknown, changes?: Change[]): void;
     private docChanged(docId: string, doc: Readonly<any>): void;
   }

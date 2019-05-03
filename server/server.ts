@@ -1,34 +1,47 @@
-// import path from "path";
 import { Server } from "http";
+import { readFileSync } from "fs";
+import path from "path";
 
+import Automerge from "automerge";
 import socket, { Socket } from "socket.io";
 
+import { Doc } from "../src/Doc";
+
 const PORT = process.env.PORT || 3000;
+
+const initialText = readFileSync(
+  path.join(__dirname, "sample-code.txt")
+).toString();
+
+const docSet = new Automerge.DocSet<Doc>();
+
+const doc = Automerge.change(Automerge.init<Doc>(), "Initialize doc", d => {
+  d.text = new Automerge.Text();
+
+  d.text.insertAt(0, ...initialText);
+});
+
+docSet.setDoc("main", doc);
 
 const server = new Server();
 const io = socket(server);
 
-server.listen(PORT);
-
-// const { tree: m, recv } = serverSync({
-//   model: Model,
-//   send: async patch => {
-//     // console.log(`sending patch: ${JSON.stringify(patch)}`);
-
-//     // simulate network latency
-//     // await new Promise(res => setTimeout(() => res(), 2000));
-
-//     io.emit("patch", patch);
-//   }
-// });
+const connection = new Automerge.Connection(docSet, msg => {
+  console.log("sending!");
+  io.emit("automerge", msg);
+});
 
 const idsBySocket = new Map<Socket, string>();
 
 io.on("connection", s => {
   console.log(`Client connected!`);
 
-  s.emit("init", { hello: "world" });
-  // s.emit("init", getSnapshot(m));
+  s.emit("init", doc);
+
+  s.on("automerge", (msg: unknown) => {
+    console.log("receiving!");
+    connection.receiveMsg(msg);
+  });
 
   // s.on("action", (action: any) => {
   //   // console.log(`got action: ${JSON.stringify(action)}. applying`);
@@ -39,10 +52,10 @@ io.on("connection", s => {
   //   }
   // });
 
-  s.on("id", id => {
-    console.log(`Client identified as '${id}'`);
-    idsBySocket.set(s, id);
-  });
+  // s.on("id", id => {
+  //   console.log(`Client identified as '${id}'`);
+  //   idsBySocket.set(s, id);
+  // });
 
   // s.on("cursor", ([x, y]: [number, number]) => {
   //   // console.log(`cursor ${idsBySocket.get(s)} = [${x},${y}]`);
@@ -58,4 +71,5 @@ io.on("connection", s => {
   });
 });
 
+server.listen(PORT);
 console.log(`Listening on port ${PORT}`);

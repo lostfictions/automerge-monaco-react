@@ -2,7 +2,8 @@ import React from "react";
 import Automerge from "automerge";
 import io from "socket.io-client";
 
-import MonacoAutomerge, { Doc } from "./monaco-automerge";
+import MonacoAutomerge from "./monaco-automerge";
+import { Doc } from "./Doc";
 
 let host: string;
 if (process.env.NODE_ENV === "production") {
@@ -26,71 +27,66 @@ socket.on("disconnect", (reason: string) => {
   console.log(`Disconnected! (Reason: '${reason}')`);
 });
 
-socket.on("init", console.log);
+// socket.on("init", console.log);
+// const doc = Automerge.change(, "Initialize doc", d => {
+//   d.text = new Automerge.Text();
 
-const initialText: string =
-  "// type your code...\nfunction frig() { console.log('hi') }";
+//   d.text.insertAt(0, ...initialText);
+// });
 
 interface AppState {
-  doc1: Doc;
-  doc2: Doc;
-  changes1: string[];
-  changes2: string[];
+  docSet: Automerge.DocSet<Doc>;
 }
 
-function getChangelog(doc: Doc): string[] {
-  return Automerge.getHistory(doc).map(state => state.change.message);
-}
+// function getChangelog(doc: Doc): string[] {
+//   return Automerge.getHistory(doc).map(state => state.change.message);
+// }
 
 export default class App extends React.Component<{}, AppState> {
+  connection: Automerge.Connection<Doc>;
+
   constructor(props: {}) {
     super(props);
 
-    const emptyDoc = Automerge.init<Doc>();
+    const docSet = new Automerge.DocSet<Doc>();
+    docSet.setDoc("main", Automerge.init<Doc>());
 
-    const doc1 = Automerge.change(emptyDoc, "Initialize doc", doc => {
-      doc.text = new Automerge.Text();
-
-      doc.text.insertAt(0, ...initialText);
+    const connection = new Automerge.Connection(docSet, msg => {
+      console.log("sending!");
+      socket.emit("automerge", msg);
     });
 
-    const doc2 = Automerge.merge(Automerge.init<Doc>(), doc1);
+    socket.on("automerge", (msg: unknown) => {
+      console.log("receiving!");
+      connection.receiveMsg(msg);
+      this.forceUpdate();
+    });
 
     this.state = {
-      doc1,
-      doc2,
-      changes1: getChangelog(doc1),
-      changes2: getChangelog(doc2)
+      docSet
     };
+
+    this.connection = connection;
   }
-  onChange1: (changeHandler: (prev: Doc) => Doc) => void = changeHandler => {
-    const nextDoc = changeHandler(this.state.doc1);
 
-    this.setState({
-      doc1: nextDoc,
-      changes1: getChangelog(nextDoc)
-    });
-  };
-  onChange2: (changeHandler: (prev: Doc) => Doc) => void = changeHandler => {
-    const nextDoc = changeHandler(this.state.doc2);
+  componentDidMount() {
+    this.connection.open();
+  }
 
-    this.setState({
-      doc2: nextDoc,
-      changes1: getChangelog(nextDoc)
-    });
-  };
+  componentWillUnmount() {
+    this.connection.close();
+  }
 
-  merge = () => {
-    this.setState(({ doc1, doc2 }) => {
-      return {
-        doc1: Automerge.merge(doc1, doc2),
-        doc2: Automerge.merge(doc2, doc1)
-      };
-    });
+  onChange: (changeHandler: () => Doc) => void = changeHandler => {
+    const nextDoc = changeHandler();
+
+    this.state.docSet.setDoc("main", nextDoc);
+    this.forceUpdate();
   };
 
   render() {
-    const { doc1, doc2, changes1, changes2 } = this.state;
+    const { docSet } = this.state;
+    const doc = docSet.getDoc("main");
 
     return (
       <div
@@ -101,8 +97,7 @@ export default class App extends React.Component<{}, AppState> {
           overflow: "hidden"
         }}
       >
-        <MonacoAutomerge value={doc1} onChange={this.onChange1} />
-        <MonacoAutomerge value={doc2} onChange={this.onChange2} />
+        <MonacoAutomerge value={doc} onChange={this.onChange} />
         <div
           style={{
             padding: 10,
@@ -111,9 +106,7 @@ export default class App extends React.Component<{}, AppState> {
             // overflow: "hidden scroll"
           }}
         >
-          <button onClick={this.merge}>merge</button>
-          {/* <div>{changes1.join("\n")}</div>
-          <div>{changes2.join("\n")}</div> */}
+          {/* <button onClick={this.merge}>merge</button> */}
         </div>
       </div>
     );
