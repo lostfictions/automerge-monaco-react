@@ -14,7 +14,7 @@ interface AppState {
 }
 
 function getChangelog(doc: Doc): string[] {
-  return Automerge.getHistory(doc).map((state: any) => state.change.message);
+  return Automerge.getHistory(doc).map(state => state.change.message);
 }
 
 export default class App extends React.Component<{}, AppState> {
@@ -29,7 +29,7 @@ export default class App extends React.Component<{}, AppState> {
       doc.text.insertAt(0, ...initialText);
     });
 
-    const doc2 = Automerge.merge(Automerge.init(), doc1);
+    const doc2 = Automerge.merge(Automerge.init<Doc>(), doc1);
 
     this.state = {
       doc1,

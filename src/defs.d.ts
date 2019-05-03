@@ -1,30 +1,84 @@
 type Mutable<T> = { -readonly [P in keyof T]: T[P] };
 
 declare module "automerge" {
+  export interface Change {
+    message: string;
+  }
+
+  export interface HistoryEntry<T> {
+    change: Change;
+    snapshot: Readonly<T>;
+  }
+
   export function init<T extends object>(actorId?: string): Readonly<T>;
   export function change<T extends object>(
     doc: Readonly<T>,
     description: string,
     changeHandler: (doc: Mutable<T>) => void
   ): Readonly<T>;
-  export function emptyChange(...args: any): any;
-  export function undo(...args: any): any;
-  export function redo(...args: any): any;
-  export function load(...args: any): any;
-  export function save(...args: any): any;
-  export function merge(...args: any): any;
+  export function emptyChange<T extends object>(
+    doc: Readonly<T>,
+    description: string
+  ): Readonly<T>;
+  export function undo<T extends object>(
+    doc: Readonly<T>,
+    description: string
+  ): Readonly<T>;
+  export function redo<T extends object>(
+    doc: Readonly<T>,
+    description: string
+  ): Readonly<T>;
+  export function load<T extends object>(
+    jsonString: string,
+    actorId?: string
+  ): Readonly<T>;
+  export function save<T extends object>(doc: Readonly<T>): string;
+  export function merge<T extends object>(
+    localDoc: Readonly<T>,
+    remoteDoc: Readonly<T>
+  ): Readonly<T>;
   export function diff(...args: any): any;
-  export function getChanges(...args: any): any;
+  export function getChanges<T extends object>(
+    oldDoc: Readonly<T>,
+    newDoc: Readonly<T>
+  ): Change[];
   export function applyChanges(...args: any): any;
   export function getMissingDeps(...args: any): any;
-  export function equals(...args: any): any;
-  export function getHistory(...args: any): any;
-  export function uuid(...args: any): any;
-  export function Frontend(...args: any): any;
-  export function Backend(...args: any): any;
-  export function DocSet(...args: any): any;
-  export function WatchableDoc(...args: any): any;
-  export function Connection(...args: any): any;
+  export function equals(a: any, b: any): boolean;
+  export function getHistory<T>(doc: T): HistoryEntry<T>[];
+  export function uuid(): string;
+  // export const Frontend: {};
+  // export const Backend: {};
+  export class DocSet<T extends object> {
+    constructor();
+
+    readonly docIds: IterableIterator<string>;
+
+    getDoc(docId: string): Readonly<T>;
+
+    setDoc(docId: string, doc: Readonly<T>): void;
+
+    applyChanges(docId: string, changes: Change[]): Readonly<T>;
+
+    registerHandler(handler: (docId: string, doc: Readonly<T>) => void): void;
+
+    unregisterHandler(handler: (docId: string, doc: Readonly<T>) => void): void;
+  }
+  export class WatchableDoc {}
+  export class Connection<T extends object> {
+    constructor(docSet: DocSet<T>, sendMsg: (msg: unknown) => void);
+
+    open(): void;
+
+    close(): void;
+
+    receiveMsg(msg: unknown): Readonly<T>;
+
+    maybeSendChanges(docId: string): void;
+
+    private sendMsg(docId: string, clock: unknown, changes?: Change[]): void;
+    private docChanged(docId: string, doc: Readonly<any>): void;
+  }
 
   export function canUndo(...args: any): any;
   export function canRedo(...args: any): any;
@@ -33,7 +87,11 @@ declare module "automerge" {
   export function getActorId(...args: any): any;
   export function setActorId(...args: any): any;
   export function getConflicts(...args: any): any;
-  export class Text extends Array<string> {
+
+  // FIXME: extending Array<string> doesn't grant it these methods
+  // automatically, so they're added in manually from lib.d.ts. not ideal --
+  // error-prone and hard to maintain.
+  export class Text /* extends Array<string> */ {
     insertAt(index: number, ...values: string[]): this;
     deleteAt(index: number, numDelete: number): this;
 
