@@ -1,7 +1,32 @@
 import React from "react";
 import Automerge from "automerge";
+import io from "socket.io-client";
 
 import MonacoAutomerge, { Doc } from "./monaco-automerge";
+
+let host: string;
+if (process.env.NODE_ENV === "production") {
+  host = window.location.toString();
+} else {
+  const PROTOCOL = "http";
+  const HOSTNAME = "localhost";
+  const PORT = process.env.PORT || 3000;
+  host = `${PROTOCOL}://${HOSTNAME}:${PORT}`;
+}
+
+const socket = io.connect(host, {
+  transports: ["websocket"]
+});
+
+socket.on("connect", () => {
+  console.log("socket connected!");
+});
+
+socket.on("disconnect", (reason: string) => {
+  console.log(`Disconnected! (Reason: '${reason}')`);
+});
+
+socket.on("init", console.log);
 
 const initialText: string =
   "// type your code...\nfunction frig() { console.log('hi') }";
