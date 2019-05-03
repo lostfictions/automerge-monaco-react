@@ -33,8 +33,26 @@ export default class App extends React.Component<{}, { doc: Doc }> {
   }
 
   onChange = (_newValue: string, e: ed.IModelContentChangedEvent) => {
+    const changeDescription =
+      "Text Change: " +
+      (() => {
+        switch (true) {
+          case e.isRedoing:
+            return "Redo";
+          case e.isUndoing:
+            return "Undo";
+          case e.changes.every(c => c.text.length > 0 && c.rangeLength === 0):
+            return "Insert";
+          case e.changes.every(c => c.text.length === 0 && c.rangeLength > 0):
+            return "Delete";
+          case e.changes.every(c => c.text.length > 0 && c.rangeLength > 0):
+            return "Replace";
+          default:
+            return "Other Edit";
+        }
+      })();
     this.setState(prev => ({
-      doc: Automerge.change(prev.doc, "Monaco change", d => {
+      doc: Automerge.change(prev.doc, changeDescription, d => {
         e.changes.forEach(change => {
           d.text.splice(change.rangeOffset, change.rangeLength, ...change.text);
         });
