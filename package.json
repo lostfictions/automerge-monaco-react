@@ -17,6 +17,7 @@
   "dependencies": {
     "@babel/core": "7.4.3",
     "@svgr/webpack": "4.1.0",
+    "automerge": "^0.10.0",
     "babel-jest": "24.7.1",
     "babel-loader": "8.0.5",
     "babel-plugin-named-asset-import": "^0.3.2",
