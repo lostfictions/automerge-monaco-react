@@ -1,5 +1,5 @@
 import React from "react";
-import Automerge from "automerge";
+import { DocSet, Connection } from "automerge";
 import io from "socket.io-client";
 
 import MonacoAutomerge from "./monaco-automerge";
@@ -11,87 +11,95 @@ if (process.env.NODE_ENV === "production") {
 } else {
   const PROTOCOL = "http";
   const HOSTNAME = "localhost";
-  const PORT = process.env.PORT || 3000;
+  const PORT = process.env.PORT || 3001;
   host = `${PROTOCOL}://${HOSTNAME}:${PORT}`;
 }
 
-const socket = io.connect(host, {
-  transports: ["websocket"]
-});
-
-socket.on("connect", () => {
-  console.log("socket connected!");
-});
-
-socket.on("disconnect", (reason: string) => {
-  console.log(`Disconnected! (Reason: '${reason}')`);
-});
-
-// socket.on("init", console.log);
-// const doc = Automerge.change(, "Initialize doc", d => {
-//   d.text = new Automerge.Text();
-
-//   d.text.insertAt(0, ...initialText);
-// });
-
-// function getChangelog(doc: Doc): string[] {
-//   return Automerge.getHistory(doc).map(state => state.change.message);
-// }
+let socket: SocketIOClient.Socket | null;
 
 interface AppState {
-  doc: Doc;
+  doc: Doc | null;
 }
 
 export default class App extends React.Component<{}, AppState> {
-  readonly docSet = new Automerge.DocSet<Doc>();
-  readonly connection: Automerge.Connection<Doc>;
+  readonly docSet = new DocSet<Doc>();
+  connection: Connection<Doc> | null = null;
 
   constructor(props: {}) {
     super(props);
 
-    const doc = Automerge.change(Automerge.init<Doc>(), "Initialize doc", d => {
-      d.text = new Automerge.Text();
-
-      d.text.insertAt(0, ..."hello friend");
+    socket = io.connect(host, {
+      transports: ["websocket"]
     });
 
-    this.docSet.setDoc("main", doc);
-
-    this.connection = new Automerge.Connection(this.docSet, msg => {
-      console.log("sending!");
-      socket.emit("automerge", msg);
+    socket.on("disconnect", (reason: string) => {
+      console.log(`Disconnected! (Reason: '${reason}')`);
     });
 
-    socket.on("automerge", (msg: unknown) => {
-      console.log("receiving!");
-      this.connection.receiveMsg(msg);
+    socket.on("connect", () => {
+      console.log("(re)connected");
+
+      // On every reconnect, it seems we have to build a new Connection object
+      // -- we can't just open and close the existing one.
+      this.connection = new Connection(this.docSet, msg => {
+        console.log(
+          `[${Date.now()
+            .toString()
+            .substr(-5)}] Sending message of length ${
+            JSON.stringify(msg).length
+          }`
+        );
+        socket!.emit("automerge", msg);
+      });
+      this.connection.open();
+
+      const automergeHandler = (msg: any) => {
+        console.log(
+          `[${Date.now()
+            .toString()
+            .substr(-5)}] Receiving message of length ${
+            JSON.stringify(msg).length
+          }`
+        );
+        this.connection!.receiveMsg(msg);
+      };
+      socket!.on("automerge", automergeHandler);
+
+      socket!.once("disconnect", (reason: string) => {
+        console.log(`Disconnected! (Reason: '${reason}')`);
+        this.connection!.close();
+        socket!.off("automerge", automergeHandler);
+      });
     });
 
-    this.docSet.registerHandler((docId, nextDoc) => {
-      console.log(`doc changed: ${docId}`);
+    this.docSet.registerHandler((_docId, nextDoc) => {
       this.setState({
         doc: nextDoc
       });
     });
 
     this.state = {
-      doc
+      doc: null
     };
   }
 
-  componentDidMount() {
-    this.connection.open();
-  }
+  // componentDidMount() {
+  //   this.connection!.open();
+  // }
 
-  componentWillUnmount() {
-    this.connection.close();
-  }
+  // componentWillUnmount() {
+  //   if (this.connection) {
+  //     this.connection.close();
+  //   }
+  // }
 
   onChange: (changeHandler: () => Doc) => void = changeHandler => {
     const nextDoc = changeHandler();
 
     this.docSet.setDoc("main", nextDoc);
-    this.forceUpdate();
+    this.setState({
+      doc: nextDoc
+    });
   };
 
   render() {
@@ -115,7 +123,7 @@ export default class App extends React.Component<{}, AppState> {
             // overflow: "hidden scroll"
           }}
         >
-          {/* <button onClick={this.merge}>merge</button> */}
+          i am helpful sidebar
         </div>
       </div>
     );

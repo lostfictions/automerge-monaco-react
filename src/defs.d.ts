@@ -65,7 +65,7 @@ declare module "automerge" {
     unregisterHandler(handler: (docId: string, doc: Readonly<T>) => void): void;
   }
   export class WatchableDoc {}
-  export class Connection<T extends object> {
+  export class Connection<T extends object = any> {
     constructor(docSet: DocSet<T>, sendMsg: (msg: unknown) => void);
     open(): void;
     close(): void;

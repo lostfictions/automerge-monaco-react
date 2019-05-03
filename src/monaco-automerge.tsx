@@ -7,7 +7,7 @@ import { editor as ed } from "monaco-editor/esm/vs/editor/editor.api";
 import { Doc } from "./Doc";
 
 export interface MonAutoProps {
-  value: Doc;
+  value: Doc | null;
   onChange(changeHandler: () => Doc): void;
 }
 
@@ -38,7 +38,7 @@ export default class MonacoAutomerge extends React.Component<MonAutoProps> {
       })();
 
     this.props.onChange(() =>
-      Automerge.change(this.props.value, changeDescription, d => {
+      Automerge.change(this.props.value!, changeDescription, d => {
         e.changes.forEach(change => {
           d.text.splice(change.rangeOffset, change.rangeLength, ...change.text);
         });
@@ -70,6 +70,10 @@ export default class MonacoAutomerge extends React.Component<MonAutoProps> {
   //   // });
   // }
   render() {
+    if (!this.props.value) {
+      return <div>Loading...</div>;
+    }
+
     const { text } = this.props.value;
 
     const model = text.join("");
